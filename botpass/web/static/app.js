@@ -8,6 +8,51 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => toast.classList.add('hidden'), duration);
     }
 
+    // --- Import UI ---
+    const importBtn = document.getElementById('import-btn');
+    const importSection = document.getElementById('import-section');
+    const cancelImport = document.getElementById('cancel-import');
+    const importForm = document.getElementById('import-form');
+    const importMessage = document.getElementById('import-message');
+
+    if (importBtn && importSection && cancelImport) {
+        importBtn.addEventListener('click', () => {
+            importSection.style.display = 'block';
+        });
+        cancelImport.addEventListener('click', () => {
+            importSection.style.display = 'none';
+        });
+    }
+
+    if (importForm) {
+        importForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const filepath = document.getElementById('import-path').value;
+            if (importMessage) importMessage.innerText = 'Importing...';
+
+            try {
+                const res = await fetch('/api/import', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({filepath})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`Imported ${data.imported} entries (${data.skipped} skipped)`);
+                    importSection.style.display = 'none';
+                    location.reload();
+                } else {
+                    if (importMessage) {
+                        importMessage.innerText = 'Error: ' + data.error;
+                        importMessage.style.color = 'var(--danger)';
+                    }
+                }
+            } catch(err) {
+                if (importMessage) importMessage.innerText = 'Network error';
+            }
+        });
+    }
+
     // --- Change Password UI ---
     const showChangePwBtn = document.getElementById('show-change-pw-btn');
     const changePwSection = document.getElementById('change-pw-section');
@@ -148,6 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const domain = document.getElementById('domain').value;
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            const notes = document.getElementById('notes').value;
 
             // Quick breach check before saving
             if (addMessage) addMessage.innerText = 'Checking breaches...';
@@ -173,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch('/api/add', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({domain, username, password})
+                    body: JSON.stringify({domain, username, password, notes})
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -258,9 +304,12 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', (e) => {
             editingDomain = e.target.getAttribute('data-domain');
             const currentUsername = e.target.getAttribute('data-username');
+            const currentNotes = e.target.getAttribute('data-notes');
             editDomainLabel.innerText = `Editing: ${editingDomain}`;
             editUsername.value = currentUsername || '';
             editPassword.value = '';
+            const editNotesEl = document.getElementById('edit-notes');
+            if (editNotesEl) editNotesEl.value = currentNotes || '';
             if (editMessage) editMessage.innerText = '';
             editModal.classList.remove('hidden');
         });
@@ -331,12 +380,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!editingDomain) return;
             const username = editUsername.value;
             const password = editPassword.value;
+            const editNotesEl = document.getElementById('edit-notes');
+            const notes = editNotesEl ? editNotesEl.value : '';
 
             try {
                 const res = await fetch('/api/update', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({domain: editingDomain, username, password})
+                    body: JSON.stringify({domain: editingDomain, username, password, notes})
                 });
                 const data = await res.json();
                 if (data.success) {

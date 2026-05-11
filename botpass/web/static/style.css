@@ -188,7 +188,16 @@ input {
 }
 
 .card h3 { margin-top: 0; }
-.card .username { color: #888; margin-bottom: 1rem; }
+.card .username { color: #888; margin-bottom: 0.5rem; }
+.card .notes { color: #999; font-size: 0.85rem; margin-bottom: 1rem; font-style: italic; }
+
+.notes-row {
+    margin-top: 0.75rem;
+}
+
+.notes-row input {
+    width: 100%;
+}
 
 .card-actions {
     display: flex;

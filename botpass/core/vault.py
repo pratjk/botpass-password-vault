@@ -142,7 +142,7 @@ class Vault:
         self._lock_timer.daemon = True
         self._lock_timer.start()
 
-    def add(self, domain: str, username: str, password: str):
+    def add(self, domain: str, username: str, password: str, notes: str = ""):
         if not self.key:
             raise Exception("Vault is locked")
 
@@ -150,7 +150,7 @@ class Vault:
         domain_h = hmac_domain(domain, self.key)
         ad = b"botpass_entry"
         
-        payload = json.dumps({"domain": domain, "username": username, "password": password})
+        payload = json.dumps({"domain": domain, "username": username, "password": password, "notes": notes})
         cipher_data, nonce = encrypt_entry(payload, self.key, ad)
         
         now = datetime.now().isoformat()
@@ -284,8 +284,8 @@ class Vault:
             self.conn.rollback()
             raise Exception(f"Failed to change password: {e}")
 
-    def update_entry(self, domain: str, new_username: str = None, new_password: str = None):
-        """Update an existing entry's username and/or password."""
+    def update_entry(self, domain: str, new_username: str = None, new_password: str = None, new_notes: str = None):
+        """Update an existing entry's username, password, and/or notes."""
         if not self.key:
             raise Exception("Vault is locked")
 
@@ -299,6 +299,8 @@ class Vault:
             data["username"] = new_username
         if new_password is not None:
             data["password"] = new_password
+        if new_notes is not None:
+            data["notes"] = new_notes
 
         domain_h = hmac_domain(domain, self.key)
         ad = b"botpass_entry"
@@ -335,4 +337,43 @@ class Vault:
             f.write(bytes([len(nonce)]))
             f.write(nonce)
             f.write(cipher_data)
+
+    def import_backup(self, filepath: str):
+        """Import entries from an encrypted backup file."""
+        if not self.key:
+            raise Exception("Vault is locked")
+
+        self._reset_timer()
+        
+        with open(filepath, 'rb') as f:
+            nonce_len = f.read(1)[0]
+            nonce = f.read(nonce_len)
+            cipher_data = f.read()
+        
+        ad = b"botpass_backup"
+        try:
+            decrypted = decrypt_entry(cipher_data, nonce, self.key, ad)
+            backup = json.loads(decrypted)
+        except Exception:
+            raise Exception("Failed to decrypt backup. Wrong master password or corrupted file.")
+        
+        if backup.get("version") != "botpass-backup-v1":
+            raise Exception("Unknown backup format.")
+        
+        imported = 0
+        skipped = 0
+        for entry in backup.get("entries", []):
+            domain = entry.get("domain")
+            username = entry.get("username", "")
+            password = entry.get("password", "")
+            notes = entry.get("notes", "")
+            
+            try:
+                self.add(domain, username, password, notes)
+                imported += 1
+            except Exception:
+                # Domain probably already exists, skip
+                skipped += 1
+        
+        return {"imported": imported, "skipped": skipped}
 

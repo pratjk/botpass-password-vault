@@ -25,10 +25,15 @@ def derive_key(master_pw: str, salt: bytes, pepper: bytes) -> bytes:
 
 def encrypt_entry(plaintext: str, key: bytes, associated_data: bytes = b"") -> tuple[bytes, bytes]:
     """Encrypt a string with AES-256-GCM. Returns (ciphertext, nonce)."""
-    # Pad to 64 bytes to hide length? Actually let's just do fixed block size padding if we wanted,
-    # but for a student project, let's just encode it and maybe pad to a multiple of 64 bytes.
-    # To keep it simple: just encrypt.
     pt_bytes = plaintext.encode('utf-8')
+    
+    # Pad plaintext to nearest 128-byte block to prevent length leakage
+    # This is important! Ciphertext length == plaintext length in GCM,
+    # so without padding an attacker can guess what's stored.
+    block_size = 128
+    pad_len = block_size - (len(pt_bytes) % block_size)
+    # Store the pad length in the last byte so we can strip it later
+    pt_bytes = pt_bytes + bytes([pad_len] * pad_len)
     
     # 12 bytes nonce for GCM
     nonce = os.urandom(12)
@@ -44,6 +49,14 @@ def decrypt_entry(ciphertext: bytes, nonce: bytes, key: bytes, associated_data: 
     aesgcm = AESGCM(key)
     # This will raise an exception if authentication fails or it's tampered
     pt_bytes = aesgcm.decrypt(nonce, ciphertext, associated_data)
+    
+    # Strip the padding we added during encryption
+    pad_len = pt_bytes[-1]
+    if pad_len > 0 and pad_len <= 128:
+        # Verify all padding bytes are the same (like PKCS7)
+        if all(b == pad_len for b in pt_bytes[-pad_len:]):
+            pt_bytes = pt_bytes[:-pad_len]
+    
     return pt_bytes.decode('utf-8')
 
 def hmac_domain(domain: str, key: bytes) -> str:

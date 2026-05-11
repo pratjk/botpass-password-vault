@@ -64,12 +64,13 @@ def api_add():
     domain = data.get('domain')
     username = data.get('username')
     password = data.get('password')
+    notes = data.get('notes', '')
     
     if not domain or not password:
         return jsonify({"error": "Missing domain or password"}), 400
         
     try:
-        _vault_instance.add(domain, username, password)
+        _vault_instance.add(domain, username, password, notes)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -107,12 +108,14 @@ def api_update():
     domain = data.get('domain')
     new_username = data.get('username')
     new_password = data.get('password')
+    new_notes = data.get('notes')
     
     try:
         _vault_instance.update_entry(
             domain, 
             new_username=new_username if new_username else None,
-            new_password=new_password if new_password else None
+            new_password=new_password if new_password else None,
+            new_notes=new_notes if new_notes is not None else None
         )
         return jsonify({"success": True})
     except Exception as e:
@@ -168,6 +171,21 @@ def api_export():
     try:
         _vault_instance.export_backup(filepath)
         return jsonify({"success": True, "path": os.path.abspath(filepath)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/api/import', methods=['POST'])
+def api_import():
+    if not _vault_instance.key:
+        return jsonify({"error": "Vault locked"}), 401
+    
+    filepath = os.path.expanduser(request.json.get('filepath', ''))
+    if not filepath or not os.path.exists(filepath):
+        return jsonify({"error": "File not found"}), 400
+    
+    try:
+        result = _vault_instance.import_backup(filepath)
+        return jsonify({"success": True, "imported": result['imported'], "skipped": result['skipped']})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 

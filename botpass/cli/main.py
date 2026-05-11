@@ -98,10 +98,14 @@ def cmd_list():
         table = Table(title="Vault Entries", show_header=True, header_style="bold magenta")
         table.add_column("Domain", style="cyan")
         table.add_column("Username", style="green")
+        table.add_column("Notes", style="dim")
 
         # I find this easier to debug than a one-liner
         for e in entries:
-            table.add_row(e.get("domain", "?"), e.get("username", "?"))
+            notes_preview = e.get("notes", "") or ""
+            if len(notes_preview) > 30:
+                notes_preview = notes_preview[:30] + "..."
+            table.add_row(e.get("domain", "?"), e.get("username", "?"), notes_preview)
             
         console.print(table)
     except Exception as e:
@@ -138,8 +142,10 @@ def cmd_add():
     else:
         console.print("[dim]Could not reach breach database. Skipping check.[/dim]")
     
+    notes = console.input("[cyan]Notes (optional): [/cyan]").strip()
+    
     try:
-        v.add(domain, username, password)
+        v.add(domain, username, password, notes)
         console.print(f"[green]Added {domain} to the vault.[/green]")
     except Exception as e:
         console.print(f"[red]Oops! {e}[/red]")
@@ -155,6 +161,8 @@ def cmd_get():
             return
             
         console.print(f"[green]Username: [/green] {data.get('username')}")
+        if data.get('notes'):
+            console.print(f"[dim]Notes: {data.get('notes')}[/dim]")
         copy_with_timeout(data.get("password"), 10)
     except Exception as e:
         console.print(f"[red]Something broke. ({e})[/red]")
@@ -181,6 +189,8 @@ def cmd_update():
         return
     
     console.print(f"Current username: {data.get('username')}")
+    if data.get('notes'):
+        console.print(f"Current notes: {data.get('notes')}")
     new_un = console.input("[cyan]New username (leave blank to keep): [/cyan]").strip()
     new_pw_input = console.input("[cyan]New password? (enter/generate/skip): [/cyan]").strip().lower()
     
@@ -190,15 +200,18 @@ def cmd_update():
     elif new_pw_input == "enter":
         new_pw = getpass.getpass("New password: ")
     
+    new_notes = console.input("[cyan]New notes (leave blank to keep): [/cyan]").strip()
+    
     try:
         v.update_entry(
             domain, 
             new_username=new_un if new_un else None, 
-            new_password=new_pw
+            new_password=new_pw,
+            new_notes=new_notes if new_notes else None
         )
         console.print(f"[green]Updated {domain}.[/green]")
     except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
+        console.print(f"[red]Error: {e}[/red]"))
 
 def cmd_changepw():
     v = get_vault()
@@ -263,6 +276,23 @@ def _strength_color(score):
     colors = ["red", "red", "yellow", "green", "bold green"]
     return colors[score]
 
+def cmd_import():
+    v = get_vault()
+    filepath = console.input("[cyan]Backup file path (e.g., vault_backup.botpass): [/cyan]").strip()
+    if not filepath:
+        console.print("[red]No path given.[/red]")
+        return
+    
+    if not os.path.exists(filepath):
+        console.print(f"[red]File not found: {filepath}[/red]")
+        return
+    
+    try:
+        result = v.import_backup(filepath)
+        console.print(f"[green]Import done! {result['imported']} entries imported, {result['skipped']} skipped (duplicates).[/green]")
+    except Exception as e:
+        console.print(f"[red]Import failed: {e}[/red]")
+
 def main():
     banner()
     
@@ -281,7 +311,7 @@ def main():
     # Interactive loop
     while True:
         try:
-            console.print("\n[bold]Commands:[/bold] [cyan]list[/cyan] [cyan]add[/cyan] [cyan]get[/cyan] [cyan]update[/cyan] [cyan]del[/cyan] [cyan]generate[/cyan] [cyan]breach[/cyan] [cyan]export[/cyan] [cyan]changepw[/cyan] [cyan]lock[/cyan] [cyan]quit[/cyan]")
+            console.print("\n[bold]Commands:[/bold] [cyan]list[/cyan] [cyan]add[/cyan] [cyan]get[/cyan] [cyan]update[/cyan] [cyan]del[/cyan] [cyan]generate[/cyan] [cyan]breach[/cyan] [cyan]export[/cyan] [cyan]import[/cyan] [cyan]changepw[/cyan] [cyan]lock[/cyan] [cyan]quit[/cyan]")
             cmd = console.input("> ").strip().lower()
             
             if cmd == "quit" or cmd == "q" or cmd == "exit":
@@ -313,6 +343,8 @@ def main():
                 cmd_export()
             elif cmd == "changepw":
                 cmd_changepw()
+            elif cmd == "import":
+                cmd_import()
             elif cmd == "":
                 pass
             else:
