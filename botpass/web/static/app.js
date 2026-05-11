@@ -1,6 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
-    // Change Password UI Toggle
+
+    const toast = document.getElementById('toast');
+
+    function showToast(msg, duration = 3000) {
+        toast.innerText = msg;
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), duration);
+    }
+
+    // --- Change Password UI ---
     const showChangePwBtn = document.getElementById('show-change-pw-btn');
     const changePwSection = document.getElementById('change-pw-section');
     const cancelChangePw = document.getElementById('cancel-change-pw');
@@ -14,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Change Password Form
     const changePwForm = document.getElementById('change-pw-form');
     if (changePwForm) {
         changePwForm.addEventListener('submit', async (e) => {
@@ -33,10 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({new_pw, new_pw2})
                 });
-                
                 const data = await res.json();
                 if (data.success) {
-                    alert("Master password successfully changed and vault re-encrypted!");
+                    showToast("Master password changed and vault re-encrypted!");
                     changePwSection.style.display = 'none';
                     document.getElementById('new-pw').value = '';
                     document.getElementById('new-pw2').value = '';
@@ -49,14 +55,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Theme Toggling
+    // --- Theme Toggle ---
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
-        // Check local storage for preference
         if (localStorage.getItem('theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
-
         themeToggle.addEventListener('click', () => {
             const current = document.documentElement.getAttribute('data-theme');
             if (current === 'dark') {
@@ -69,64 +73,74 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Search functionality
+    // --- Search ---
     const searchInput = document.getElementById('search-input');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
             document.querySelectorAll('.card').forEach(card => {
                 const domain = card.getAttribute('data-domain');
-                if (domain.includes(term)) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
+                card.style.display = domain.includes(term) ? 'block' : 'none';
             });
         });
     }
 
-    // Reveal Buttons
-    const toast = document.getElementById('toast');
-    document.querySelectorAll('.reveal-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const domain = e.target.getAttribute('data-domain');
-            const originalText = e.target.innerText;
-            
-            e.target.innerText = "Revealing...";
-            
+    // --- Password Strength Bar (Add Form) ---
+    const passwordInput = document.getElementById('password');
+    const strengthBar = document.getElementById('strength-bar');
+    const addMessage = document.getElementById('add-message');
+    let strengthTimeout;
+
+    if (passwordInput && strengthBar) {
+        passwordInput.addEventListener('input', (e) => {
+            clearTimeout(strengthTimeout);
+            const pw = e.target.value;
+            if (!pw) {
+                strengthBar.className = 'strength-bar';
+                if (addMessage) addMessage.innerText = '';
+                return;
+            }
+            strengthTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch('/api/strength', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({password: pw})
+                    });
+                    const data = await res.json();
+                    strengthBar.className = 'strength-bar strength-' + data.score;
+                    if (addMessage) {
+                        addMessage.innerText = data.label + ' — ' + data.feedback.join(', ');
+                        addMessage.style.color = ['#e74c3c','#e74c3c','#f39c12','#27ae60','#27ae60'][data.score];
+                    }
+                } catch(err) {}
+            }, 300);
+        });
+    }
+
+    // --- Generate Password (Add Form) ---
+    const generateBtn = document.getElementById('generate-btn');
+    if (generateBtn && passwordInput) {
+        generateBtn.addEventListener('click', async () => {
             try {
-                const res = await fetch('/api/reveal', {
+                const res = await fetch('/api/generate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({domain})
+                    body: JSON.stringify({style: 'random'})
                 });
-                
                 const data = await res.json();
-                if (data.success) {
-                    toast.innerText = "Copied to clipboard!";
-                    toast.classList.remove('hidden');
-                    e.target.innerText = "Copied!";
-                    
-                    // The password was actually copied server-side by pyperclip
-                    // We don't necessarily need to use navigator.clipboard here,
-                    // but we could if we wanted the browser to do it.
-                    
-                    setTimeout(() => {
-                        toast.classList.add('hidden');
-                        e.target.innerText = originalText;
-                    }, 3000);
-                } else {
-                    alert("Failed to reveal: " + data.error);
-                    e.target.innerText = originalText;
-                }
-            } catch (err) {
-                alert("Network error");
-                e.target.innerText = originalText;
+                passwordInput.type = 'text'; // Show it briefly
+                passwordInput.value = data.password;
+                passwordInput.dispatchEvent(new Event('input')); // Trigger strength bar
+                setTimeout(() => { passwordInput.type = 'password'; }, 3000);
+                showToast("Password generated! Visible for 3s.");
+            } catch(err) {
+                alert("Failed to generate password");
             }
         });
-    });
+    }
 
-    // Add Form
+    // --- Add Form ---
     const addForm = document.getElementById('add-form');
     if (addForm) {
         addForm.addEventListener('submit', async (e) => {
@@ -135,16 +149,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
+            // Quick breach check before saving
+            if (addMessage) addMessage.innerText = 'Checking breaches...';
+            try {
+                const breachRes = await fetch('/api/breach', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password})
+                });
+                const breachData = await breachRes.json();
+                if (breachData.count > 0) {
+                    const proceed = confirm(`⚠ This password has appeared in ${breachData.count.toLocaleString()} data breaches!\n\nSave anyway?`);
+                    if (!proceed) {
+                        if (addMessage) addMessage.innerText = 'Cancelled.';
+                        return;
+                    }
+                }
+            } catch(err) {
+                // Couldn't reach HIBP, proceed anyway
+            }
+
             try {
                 const res = await fetch('/api/add', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({domain, username, password})
                 });
-                
                 const data = await res.json();
                 if (data.success) {
-                    location.reload(); // Quick refresh to show new entry
+                    location.reload();
                 } else {
                     alert("Error: " + data.error);
                 }
@@ -154,7 +187,190 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Lock Button
+    // --- Reveal Buttons ---
+    document.querySelectorAll('.reveal-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const domain = e.target.getAttribute('data-domain');
+            const originalText = e.target.innerText;
+            e.target.innerText = "...";
+
+            try {
+                const res = await fetch('/api/reveal', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({domain})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast("Password copied to clipboard!");
+                    e.target.innerText = "✓ Copied!";
+                    setTimeout(() => { e.target.innerText = originalText; }, 3000);
+                } else {
+                    alert("Failed: " + data.error);
+                    e.target.innerText = originalText;
+                }
+            } catch (err) {
+                alert("Network error");
+                e.target.innerText = originalText;
+            }
+        });
+    });
+
+    // --- Delete Buttons ---
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const domain = e.target.getAttribute('data-domain');
+            if (!confirm(`Delete "${domain}"? This cannot be undone.`)) return;
+
+            try {
+                const res = await fetch('/api/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({domain})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Remove the card from DOM
+                    e.target.closest('.card').remove();
+                    showToast(`Deleted ${domain}`);
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch(err) {
+                alert("Network error");
+            }
+        });
+    });
+
+    // --- Edit Modal ---
+    const editModal = document.getElementById('edit-modal');
+    const editUsername = document.getElementById('edit-username');
+    const editPassword = document.getElementById('edit-password');
+    const editDomainLabel = document.getElementById('edit-domain-label');
+    const editMessage = document.getElementById('edit-message');
+    const editSaveBtn = document.getElementById('edit-save-btn');
+    const editCancelBtn = document.getElementById('edit-cancel-btn');
+    const editGenerateBtn = document.getElementById('edit-generate-btn');
+    const editBreachBtn = document.getElementById('edit-breach-btn');
+    let editingDomain = null;
+
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            editingDomain = e.target.getAttribute('data-domain');
+            const currentUsername = e.target.getAttribute('data-username');
+            editDomainLabel.innerText = `Editing: ${editingDomain}`;
+            editUsername.value = currentUsername || '';
+            editPassword.value = '';
+            if (editMessage) editMessage.innerText = '';
+            editModal.classList.remove('hidden');
+        });
+    });
+
+    if (editCancelBtn) {
+        editCancelBtn.addEventListener('click', () => {
+            editModal.classList.add('hidden');
+            editingDomain = null;
+        });
+    }
+
+    if (editGenerateBtn) {
+        editGenerateBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({style: 'random'})
+                });
+                const data = await res.json();
+                editPassword.type = 'text';
+                editPassword.value = data.password;
+                setTimeout(() => { editPassword.type = 'password'; }, 3000);
+                if (editMessage) {
+                    editMessage.innerText = `Generated (${data.strength.label}). Visible for 3s.`;
+                    editMessage.style.color = 'var(--success)';
+                }
+            } catch(err) {
+                alert("Failed to generate");
+            }
+        });
+    }
+
+    if (editBreachBtn) {
+        editBreachBtn.addEventListener('click', async () => {
+            const pw = editPassword.value;
+            if (!pw) {
+                if (editMessage) editMessage.innerText = 'Enter a password first.';
+                return;
+            }
+            if (editMessage) editMessage.innerText = 'Checking...';
+            try {
+                const res = await fetch('/api/breach', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: pw})
+                });
+                const data = await res.json();
+                if (data.count > 0) {
+                    editMessage.innerText = `⚠ Found in ${data.count.toLocaleString()} breaches!`;
+                    editMessage.style.color = 'var(--danger)';
+                } else if (data.count === 0) {
+                    editMessage.innerText = '✓ Not found in any breaches.';
+                    editMessage.style.color = 'var(--success)';
+                } else {
+                    editMessage.innerText = 'Could not reach breach database.';
+                    editMessage.style.color = 'var(--warning)';
+                }
+            } catch(err) {
+                editMessage.innerText = 'Network error.';
+            }
+        });
+    }
+
+    if (editSaveBtn) {
+        editSaveBtn.addEventListener('click', async () => {
+            if (!editingDomain) return;
+            const username = editUsername.value;
+            const password = editPassword.value;
+
+            try {
+                const res = await fetch('/api/update', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({domain: editingDomain, username, password})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`Updated ${editingDomain}`);
+                    editModal.classList.add('hidden');
+                    location.reload();
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch(err) {
+                alert("Network error");
+            }
+        });
+    }
+
+    // --- Export ---
+    const exportBtn = document.getElementById('export-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/api/export');
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`Exported to: ${data.path}`);
+                } else {
+                    alert("Export failed: " + data.error);
+                }
+            } catch(err) {
+                alert("Network error");
+            }
+        });
+    }
+
+    // --- Lock Button ---
     const lockBtn = document.getElementById('lock-btn');
     if (lockBtn) {
         lockBtn.addEventListener('click', async () => {
@@ -163,8 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Auto-lock timer (JavaScript side to sync with Python side)
-    // 5 minutes = 300,000 ms
+    // --- Auto-lock timer ---
     let idleTime = 0;
     const idleLimit = 5 * 60 * 1000;
 
@@ -177,7 +392,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setInterval(() => {
             idleTime += 1000;
             if (idleTime >= idleLimit) {
-                // Time's up, lock it
                 fetch('/api/lock', { method: 'POST' }).then(() => {
                     location.href = '/login';
                 });

@@ -10,6 +10,7 @@ from rich.panel import Panel
 import pyperclip
 
 from botpass.core.vault import Vault
+from botpass.core.utils import generate_password_diceware, generate_password_random, check_password_strength, check_hibp
 
 console = Console()
 
@@ -110,7 +111,32 @@ def cmd_add():
     v = get_vault()
     domain = console.input("[cyan]Domain/Site: [/cyan]")
     username = console.input("[cyan]Username: [/cyan]")
-    password = getpass.getpass("Password: ")
+    
+    use_gen = console.input("[cyan]Generate password? (y/n): [/cyan]").strip().lower()
+    if use_gen == "y":
+        password = cmd_generate(return_pw=True)
+    else:
+        password = getpass.getpass("Password: ")
+    
+    # Show strength
+    strength = check_password_strength(password)
+    console.print(f"Password strength: [{_strength_color(strength['score'])}]{strength['label']}[/{_strength_color(strength['score'])}]")
+    for fb in strength["feedback"]:
+        console.print(f"  → {fb}")
+    
+    # Check HIBP
+    console.print("[dim]Checking against known breaches...[/dim]")
+    breach_count = check_hibp(password)
+    if breach_count > 0:
+        console.print(f"[bold red]⚠ This password appeared in {breach_count:,} data breaches! Consider a different one.[/bold red]")
+        proceed = console.input("[yellow]Save anyway? (y/n): [/yellow]").strip().lower()
+        if proceed != "y":
+            console.print("Cancelled.")
+            return
+    elif breach_count == 0:
+        console.print("[green]✓ Not found in any known breaches.[/green]")
+    else:
+        console.print("[dim]Could not reach breach database. Skipping check.[/dim]")
     
     try:
         v.add(domain, username, password)
@@ -145,6 +171,35 @@ def cmd_delete():
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
+def cmd_update():
+    v = get_vault()
+    domain = console.input("[cyan]Domain to update: [/cyan]")
+    
+    data = v.get(domain)
+    if not data:
+        console.print("[red]Not found in vault.[/red]")
+        return
+    
+    console.print(f"Current username: {data.get('username')}")
+    new_un = console.input("[cyan]New username (leave blank to keep): [/cyan]").strip()
+    new_pw_input = console.input("[cyan]New password? (enter/generate/skip): [/cyan]").strip().lower()
+    
+    new_pw = None
+    if new_pw_input == "generate":
+        new_pw = cmd_generate(return_pw=True)
+    elif new_pw_input == "enter":
+        new_pw = getpass.getpass("New password: ")
+    
+    try:
+        v.update_entry(
+            domain, 
+            new_username=new_un if new_un else None, 
+            new_password=new_pw
+        )
+        console.print(f"[green]Updated {domain}.[/green]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
 def cmd_changepw():
     v = get_vault()
     console.print("[yellow]Changing master password will re-encrypt your entire vault.[/yellow]")
@@ -157,9 +212,56 @@ def cmd_changepw():
         
     try:
         v.change_master_password(pw1)
-        console.print("[green]Success! Vault re-encrypted with new password.[/green]")
+        console.print("[green]Done. All your secrets are safe with the new password. Probably.[/green]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
+
+def cmd_generate(return_pw=False):
+    """Generate a password. If return_pw=True, returns the password instead of copying."""
+    style = console.input("[cyan]Style? (diceware/random): [/cyan]").strip().lower()
+    
+    if style == "diceware" or style == "d":
+        pw = generate_password_diceware()
+    else:
+        pw = generate_password_random()
+    
+    console.print(f"[green]Generated: [bold]{pw}[/bold][/green]")
+    
+    strength = check_password_strength(pw)
+    console.print(f"Strength: [{_strength_color(strength['score'])}]{strength['label']}[/{_strength_color(strength['score'])}]")
+    
+    if return_pw:
+        return pw
+    else:
+        copy_with_timeout(pw)
+
+def cmd_export():
+    v = get_vault()
+    filepath = console.input("[cyan]Export path (e.g., backup.botpass): [/cyan]").strip()
+    if not filepath:
+        filepath = "vault_backup.botpass"
+    
+    try:
+        v.export_backup(filepath)
+        console.print(f"[green]Vault exported to {filepath}. Keep it safe![/green]")
+    except Exception as e:
+        console.print(f"[red]Export failed: {e}[/red]")
+
+def cmd_breach():
+    """Check a password against Have I Been Pwned."""
+    pw = getpass.getpass("Password to check: ")
+    console.print("[dim]Checking against known breaches (using k-anonymity)...[/dim]")
+    count = check_hibp(pw)
+    if count > 0:
+        console.print(f"[bold red]⚠ Found in {count:,} breaches! Change this password immediately.[/bold red]")
+    elif count == 0:
+        console.print("[green]✓ Not found in any known breaches. You're good.[/green]")
+    else:
+        console.print("[yellow]Could not reach the breach database. Try again later.[/yellow]")
+
+def _strength_color(score):
+    colors = ["red", "red", "yellow", "green", "bold green"]
+    return colors[score]
 
 def main():
     banner()
@@ -179,7 +281,7 @@ def main():
     # Interactive loop
     while True:
         try:
-            console.print("\n[bold]Commands:[/bold] [cyan]list[/cyan], [cyan]add[/cyan], [cyan]get[/cyan], [cyan]del[/cyan], [cyan]changepw[/cyan], [cyan]lock[/cyan], [cyan]quit[/cyan]")
+            console.print("\n[bold]Commands:[/bold] [cyan]list[/cyan] [cyan]add[/cyan] [cyan]get[/cyan] [cyan]update[/cyan] [cyan]del[/cyan] [cyan]generate[/cyan] [cyan]breach[/cyan] [cyan]export[/cyan] [cyan]changepw[/cyan] [cyan]lock[/cyan] [cyan]quit[/cyan]")
             cmd = console.input("> ").strip().lower()
             
             if cmd == "quit" or cmd == "q" or cmd == "exit":
@@ -199,8 +301,16 @@ def main():
                 cmd_add()
             elif cmd == "get":
                 cmd_get()
+            elif cmd == "update":
+                cmd_update()
             elif cmd == "del":
                 cmd_delete()
+            elif cmd == "generate" or cmd == "gen":
+                cmd_generate()
+            elif cmd == "breach":
+                cmd_breach()
+            elif cmd == "export":
+                cmd_export()
             elif cmd == "changepw":
                 cmd_changepw()
             elif cmd == "":

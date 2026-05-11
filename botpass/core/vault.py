@@ -283,3 +283,56 @@ class Vault:
         except Exception as e:
             self.conn.rollback()
             raise Exception(f"Failed to change password: {e}")
+
+    def update_entry(self, domain: str, new_username: str = None, new_password: str = None):
+        """Update an existing entry's username and/or password."""
+        if not self.key:
+            raise Exception("Vault is locked")
+
+        self._reset_timer()
+        data = self.get(domain)
+        if not data:
+            raise Exception("Entry not found.")
+
+        # Update whatever was provided
+        if new_username is not None:
+            data["username"] = new_username
+        if new_password is not None:
+            data["password"] = new_password
+
+        domain_h = hmac_domain(domain, self.key)
+        ad = b"botpass_entry"
+        payload = json.dumps(data)
+        cipher_data, nonce = encrypt_entry(payload, self.key, ad)
+        now = datetime.now().isoformat()
+
+        self.conn.execute('''
+            UPDATE entries SET data_enc = ?, nonce = ?, updated_at = ?
+            WHERE domain_hmac = ?
+        ''', (cipher_data, nonce, now, domain_h))
+        self.conn.commit()
+
+    def export_backup(self, filepath: str):
+        """Export the vault to an encrypted JSON backup file."""
+        if not self.key:
+            raise Exception("Vault is locked")
+
+        self._reset_timer()
+        entries = self.list_entries()
+        
+        # We'll encrypt the entire JSON blob with our current key
+        backup_data = json.dumps({
+            "version": "botpass-backup-v1",
+            "exported_at": datetime.now().isoformat(),
+            "entries": entries
+        })
+        
+        ad = b"botpass_backup"
+        cipher_data, nonce = encrypt_entry(backup_data, self.key, ad)
+        
+        # Write as a simple binary format: nonce_len(1 byte) + nonce + ciphertext
+        with open(filepath, 'wb') as f:
+            f.write(bytes([len(nonce)]))
+            f.write(nonce)
+            f.write(cipher_data)
+

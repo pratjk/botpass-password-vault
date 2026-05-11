@@ -3,6 +3,7 @@ import os
 import pyperclip
 
 from botpass.core.vault import Vault
+from botpass.core.utils import generate_password_diceware, generate_password_random, check_password_strength, check_hibp
 
 app = Flask(__name__)
 # Generate a random secret key for Flask sessions each time
@@ -87,6 +88,59 @@ def api_reveal():
         return jsonify({"success": True, "password": data.get('password'), "copied": True})
     return jsonify({"error": "Not found"}), 404
 
+@app.route('/api/delete', methods=['POST'])
+def api_delete():
+    if not _vault_instance.key:
+        return jsonify({"error": "Vault locked"}), 401
+        
+    domain = request.json.get('domain')
+    if _vault_instance.delete(domain):
+        return jsonify({"success": True})
+    return jsonify({"error": "Not found"}), 404
+
+@app.route('/api/update', methods=['POST'])
+def api_update():
+    if not _vault_instance.key:
+        return jsonify({"error": "Vault locked"}), 401
+        
+    data = request.json
+    domain = data.get('domain')
+    new_username = data.get('username')
+    new_password = data.get('password')
+    
+    try:
+        _vault_instance.update_entry(
+            domain, 
+            new_username=new_username if new_username else None,
+            new_password=new_password if new_password else None
+        )
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/api/generate', methods=['POST'])
+def api_generate():
+    style = request.json.get('style', 'random')
+    if style == 'diceware':
+        pw = generate_password_diceware()
+    else:
+        pw = generate_password_random()
+    
+    strength = check_password_strength(pw)
+    return jsonify({"password": pw, "strength": strength})
+
+@app.route('/api/strength', methods=['POST'])
+def api_strength():
+    password = request.json.get('password', '')
+    strength = check_password_strength(password)
+    return jsonify(strength)
+
+@app.route('/api/breach', methods=['POST'])
+def api_breach():
+    password = request.json.get('password', '')
+    count = check_hibp(password)
+    return jsonify({"count": count})
+
 @app.route('/api/changepw', methods=['POST'])
 def api_changepw():
     if not _vault_instance.key:
@@ -102,6 +156,18 @@ def api_changepw():
     try:
         _vault_instance.change_master_password(new_pw)
         return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/api/export', methods=['GET'])
+def api_export():
+    if not _vault_instance.key:
+        return jsonify({"error": "Vault locked"}), 401
+    
+    filepath = os.path.expanduser("vault_backup.botpass")
+    try:
+        _vault_instance.export_backup(filepath)
+        return jsonify({"success": True, "path": os.path.abspath(filepath)})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
