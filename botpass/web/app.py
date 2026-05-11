@@ -87,6 +87,24 @@ def api_reveal():
         return jsonify({"success": True, "password": data.get('password'), "copied": True})
     return jsonify({"error": "Not found"}), 404
 
+@app.route('/api/changepw', methods=['POST'])
+def api_changepw():
+    if not _vault_instance.key:
+        return jsonify({"error": "Vault locked"}), 401
+        
+    data = request.json
+    new_pw = data.get('new_pw')
+    new_pw2 = data.get('new_pw2')
+    
+    if new_pw != new_pw2:
+        return jsonify({"error": "Passwords do not match."}), 400
+        
+    try:
+        _vault_instance.change_master_password(new_pw)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
 @app.route('/api/lock', methods=['POST'])
 def api_lock():
     _vault_instance.lock()

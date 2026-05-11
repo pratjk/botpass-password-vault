@@ -1,5 +1,54 @@
 document.addEventListener('DOMContentLoaded', () => {
     
+    // Change Password UI Toggle
+    const showChangePwBtn = document.getElementById('show-change-pw-btn');
+    const changePwSection = document.getElementById('change-pw-section');
+    const cancelChangePw = document.getElementById('cancel-change-pw');
+    
+    if (showChangePwBtn && changePwSection && cancelChangePw) {
+        showChangePwBtn.addEventListener('click', () => {
+            changePwSection.style.display = 'block';
+        });
+        cancelChangePw.addEventListener('click', () => {
+            changePwSection.style.display = 'none';
+        });
+    }
+
+    // Change Password Form
+    const changePwForm = document.getElementById('change-pw-form');
+    if (changePwForm) {
+        changePwForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const new_pw = document.getElementById('new-pw').value;
+            const new_pw2 = document.getElementById('new-pw2').value;
+
+            if (new_pw !== new_pw2) {
+                alert("Passwords do not match!");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/changepw', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({new_pw, new_pw2})
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    alert("Master password successfully changed and vault re-encrypted!");
+                    changePwSection.style.display = 'none';
+                    document.getElementById('new-pw').value = '';
+                    document.getElementById('new-pw2').value = '';
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch (err) {
+                alert("Network error");
+            }
+        });
+    }
+
     // Theme Toggling
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {

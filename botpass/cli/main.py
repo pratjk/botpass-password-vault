@@ -145,6 +145,22 @@ def cmd_delete():
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
 
+def cmd_changepw():
+    v = get_vault()
+    console.print("[yellow]Changing master password will re-encrypt your entire vault.[/yellow]")
+    pw1 = getpass.getpass("Enter NEW strong master password: ")
+    pw2 = getpass.getpass("Verify NEW password: ")
+    
+    if pw1 != pw2:
+        console.print("[red]🙅 Passwords don't match.[/red]")
+        return
+        
+    try:
+        v.change_master_password(pw1)
+        console.print("[green]Success! Vault re-encrypted with new password.[/green]")
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+
 def main():
     banner()
     
@@ -163,7 +179,7 @@ def main():
     # Interactive loop
     while True:
         try:
-            console.print("\n[bold]Commands:[/bold] [cyan]list[/cyan], [cyan]add[/cyan], [cyan]get[/cyan], [cyan]del[/cyan], [cyan]lock[/cyan], [cyan]quit[/cyan]")
+            console.print("\n[bold]Commands:[/bold] [cyan]list[/cyan], [cyan]add[/cyan], [cyan]get[/cyan], [cyan]del[/cyan], [cyan]changepw[/cyan], [cyan]lock[/cyan], [cyan]quit[/cyan]")
             cmd = console.input("> ").strip().lower()
             
             if cmd == "quit" or cmd == "q" or cmd == "exit":
@@ -185,6 +201,8 @@ def main():
                 cmd_get()
             elif cmd == "del":
                 cmd_delete()
+            elif cmd == "changepw":
+                cmd_changepw()
             elif cmd == "":
                 pass
             else:

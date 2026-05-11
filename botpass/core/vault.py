@@ -221,3 +221,65 @@ class Vault:
         cursor.execute('DELETE FROM entries WHERE domain_hmac = ?', (domain_h,))
         self.conn.commit()
         return cursor.rowcount > 0
+
+    def change_master_password(self, new_pw: str):
+        """Re-encrypt the entire vault with a new master password."""
+        if not self.key:
+            raise Exception("Vault must be unlocked to change password.")
+
+        # Password complexity validation
+        if len(new_pw) < 8:
+            raise Exception("Master password must be at least 8 characters long.")
+        if not any(char.isdigit() for char in new_pw):
+            raise Exception("Master password must contain at least one number.")
+        if not any(not char.isalnum() for char in new_pw):
+            raise Exception("Master password must contain at least one special character.")
+
+        new_salt = os.urandom(32)
+        new_key = derive_key(new_pw, new_salt, self.pepper)
+
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT domain_hmac, data_enc, nonce FROM entries')
+        rows = cursor.fetchall()
+
+        new_entries = []
+        old_verify_hmac = hmac_domain("__verify__", self.key)
+
+        for row in rows:
+            domain_hmac, data_enc, nonce = row
+            if domain_hmac == old_verify_hmac:
+                try:
+                    decrypted = decrypt_entry(data_enc, nonce, self.key, b"__verify__")
+                    new_domain_hmac = hmac_domain("__verify__", new_key)
+                    new_cipher, new_nonce = encrypt_entry(decrypted, new_key, b"__verify__")
+                    new_entries.append((new_domain_hmac, new_cipher, new_nonce, domain_hmac))
+                except Exception:
+                    raise Exception("Failed to decrypt canary during re-keying.")
+            else:
+                try:
+                    decrypted = decrypt_entry(data_enc, nonce, self.key, b"botpass_entry")
+                    payload = json.loads(decrypted)
+                    domain = payload.get("domain")
+                    
+                    new_domain_hmac = hmac_domain(domain, new_key)
+                    new_cipher, new_nonce = encrypt_entry(decrypted, new_key, b"botpass_entry")
+                    new_entries.append((new_domain_hmac, new_cipher, new_nonce, domain_hmac))
+                except Exception:
+                    pass
+
+        try:
+            for new_h, new_c, new_n, old_h in new_entries:
+                self.conn.execute('''
+                    UPDATE entries 
+                    SET domain_hmac = ?, data_enc = ?, nonce = ?, updated_at = ?
+                    WHERE domain_hmac = ?
+                ''', (new_h, new_c, new_n, datetime.now().isoformat(), old_h))
+            
+            with open(self.salt_path, 'wb') as f:
+                f.write(new_salt)
+                
+            self.conn.commit()
+            self.key = new_key
+        except Exception as e:
+            self.conn.rollback()
+            raise Exception(f"Failed to change password: {e}")

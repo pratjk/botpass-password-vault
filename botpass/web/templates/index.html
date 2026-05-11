@@ -12,12 +12,23 @@
             <h1>🔐 Botpass</h1>
             <div class="header-actions">
                 <button class="btn btn-outline" id="theme-toggle">🌙</button>
+                <button class="btn btn-outline" id="show-change-pw-btn">Change Password</button>
                 <button class="btn btn-danger" id="lock-btn">Lock Vault</button>
             </div>
         </div>
     </header>
 
     <main class="container">
+        <section class="add-section change-pw-section" id="change-pw-section" style="display: none; border: 2px solid var(--danger);">
+            <h2>Change Master Password</h2>
+            <form id="change-pw-form" class="add-form" style="grid-template-columns: 1fr 1fr auto auto;">
+                <input type="password" id="new-pw" placeholder="New Password" required>
+                <input type="password" id="new-pw2" placeholder="Verify Password" required>
+                <button type="submit" class="btn btn-danger">Re-encrypt Vault</button>
+                <button type="button" class="btn btn-outline" id="cancel-change-pw">Cancel</button>
+            </form>
+        </section>
+
         <section class="add-section">
             <h2>Add New Entry</h2>
             <form id="add-form" class="add-form">
