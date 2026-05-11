@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Botpass specific
+vault.db
+salt.bin
+config.json
+
+# Logs
+*.log
