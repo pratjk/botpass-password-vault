@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 import pyperclip
+import pyotp
 
 from botpass.core.vault import Vault
 from botpass.core.utils import generate_password_diceware, generate_password_random, check_password_strength, check_hibp
@@ -98,14 +99,17 @@ def cmd_list():
         table = Table(title="Vault Entries", show_header=True, header_style="bold magenta")
         table.add_column("Domain", style="cyan")
         table.add_column("Username", style="green")
-        table.add_column("Notes", style="dim")
+        table.add_column("Tags", style="blue")
+        table.add_column("Notes/TOTP", style="dim")
 
         # I find this easier to debug than a one-liner
         for e in entries:
             notes_preview = e.get("notes", "") or ""
             if len(notes_preview) > 30:
                 notes_preview = notes_preview[:30] + "..."
-            table.add_row(e.get("domain", "?"), e.get("username", "?"), notes_preview)
+            if e.get("totp_secret"):
+                notes_preview = "[bold red]2FA[/bold red] " + notes_preview
+            table.add_row(e.get("domain", "?"), e.get("username", "?"), e.get("tags", ""), notes_preview)
             
         console.print(table)
     except Exception as e:
@@ -143,9 +147,11 @@ def cmd_add():
         console.print("[dim]Could not reach breach database. Skipping check.[/dim]")
     
     notes = console.input("[cyan]Notes (optional): [/cyan]").strip()
+    tags = console.input("[cyan]Tags (comma separated, optional): [/cyan]").strip()
+    totp_secret = console.input("[cyan]TOTP Secret (optional): [/cyan]").strip()
     
     try:
-        v.add(domain, username, password, notes)
+        v.add(domain, username, password, notes, tags, totp_secret)
         console.print(f"[green]Added {domain} to the vault.[/green]")
     except Exception as e:
         console.print(f"[red]Oops! {e}[/red]")
@@ -161,8 +167,16 @@ def cmd_get():
             return
             
         console.print(f"[green]Username: [/green] {data.get('username')}")
+        if data.get('tags'):
+            console.print(f"[blue]Tags: {data.get('tags')}[/blue]")
         if data.get('notes'):
             console.print(f"[dim]Notes: {data.get('notes')}[/dim]")
+        if data.get('totp_secret'):
+            try:
+                totp = pyotp.TOTP(data.get('totp_secret'))
+                console.print(f"[bold red]TOTP (2FA): {totp.now()}[/bold red]")
+            except Exception:
+                console.print("[red]Invalid TOTP secret configured![/red]")
         copy_with_timeout(data.get("password"), 10)
     except Exception as e:
         console.print(f"[red]Something broke. ({e})[/red]")
@@ -191,6 +205,11 @@ def cmd_update():
     console.print(f"Current username: {data.get('username')}")
     if data.get('notes'):
         console.print(f"Current notes: {data.get('notes')}")
+    if data.get('tags'):
+        console.print(f"Current tags: {data.get('tags')}")
+    if data.get('totp_secret'):
+        console.print(f"Current TOTP Secret: {data.get('totp_secret')}")
+        
     new_un = console.input("[cyan]New username (leave blank to keep): [/cyan]").strip()
     new_pw_input = console.input("[cyan]New password? (enter/generate/skip): [/cyan]").strip().lower()
     
@@ -201,17 +220,21 @@ def cmd_update():
         new_pw = getpass.getpass("New password: ")
     
     new_notes = console.input("[cyan]New notes (leave blank to keep): [/cyan]").strip()
+    new_tags = console.input("[cyan]New tags (leave blank to keep): [/cyan]").strip()
+    new_totp = console.input("[cyan]New TOTP Secret (leave blank to keep): [/cyan]").strip()
     
     try:
         v.update_entry(
             domain, 
             new_username=new_un if new_un else None, 
             new_password=new_pw,
-            new_notes=new_notes if new_notes else None
+            new_notes=new_notes if new_notes else None,
+            new_tags=new_tags if new_tags else None,
+            new_totp_secret=new_totp if new_totp else None
         )
         console.print(f"[green]Updated {domain}.[/green]")
     except Exception as e:
-        console.print(f"[red]Error: {e}[/red]"))
+        console.print(f"[red]Error: {e}[/red]")
 
 def cmd_changepw():
     v = get_vault()

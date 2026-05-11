@@ -124,8 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
             document.querySelectorAll('.card').forEach(card => {
-                const domain = card.getAttribute('data-domain');
-                card.style.display = domain.includes(term) ? 'block' : 'none';
+                const domain = card.getAttribute('data-domain') || '';
+                const tags = card.getAttribute('data-tags') || '';
+                card.style.display = (domain.includes(term) || tags.includes(term)) ? 'block' : 'none';
             });
         });
     }
@@ -193,7 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const domain = document.getElementById('domain').value;
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const notes = document.getElementById('notes').value;
+            const notes = document.getElementById('notes') ? document.getElementById('notes').value : '';
+            const tags = document.getElementById('tags') ? document.getElementById('tags').value : '';
+            const totp_secret = document.getElementById('totp_secret') ? document.getElementById('totp_secret').value : '';
 
             // Quick breach check before saving
             if (addMessage) addMessage.innerText = 'Checking breaches...';
@@ -219,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch('/api/add', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({domain, username, password, notes})
+                    body: JSON.stringify({domain, username, password, notes, tags, totp_secret})
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -250,6 +253,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.success) {
                     showToast("Password copied to clipboard!");
                     e.target.innerText = "✓ Copied!";
+                    
+                    // Show TOTP modal if a code was returned
+                    if (data.totp) {
+                        const totpModal = document.getElementById('totp-modal');
+                        const totpLabel = document.getElementById('totp-domain-label');
+                        const totpCode = document.getElementById('totp-code');
+                        if (totpModal && totpLabel && totpCode) {
+                            totpLabel.innerText = domain;
+                            totpCode.innerText = data.totp;
+                            totpModal.classList.remove('hidden');
+                        }
+                    }
+
                     setTimeout(() => { e.target.innerText = originalText; }, 3000);
                 } else {
                     alert("Failed: " + data.error);
@@ -261,6 +277,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // --- TOTP Modal close and copy ---
+    const totpModal = document.getElementById('totp-modal');
+    const totpCloseBtn = document.getElementById('totp-close-btn');
+    const totpCodeDisplay = document.getElementById('totp-code');
+    if (totpCloseBtn) {
+        totpCloseBtn.addEventListener('click', () => {
+            totpModal.classList.add('hidden');
+        });
+    }
+    if (totpCodeDisplay) {
+        totpCodeDisplay.addEventListener('click', () => {
+            navigator.clipboard.writeText(totpCodeDisplay.innerText).then(() => {
+                showToast("2FA Code copied!");
+            });
+        });
+    }
 
     // --- Delete Buttons ---
     document.querySelectorAll('.delete-btn').forEach(btn => {
@@ -305,11 +338,22 @@ document.addEventListener('DOMContentLoaded', () => {
             editingDomain = e.target.getAttribute('data-domain');
             const currentUsername = e.target.getAttribute('data-username');
             const currentNotes = e.target.getAttribute('data-notes');
+            const currentTags = e.target.getAttribute('data-tags');
+            const currentTotp = e.target.getAttribute('data-totp');
+            
             editDomainLabel.innerText = `Editing: ${editingDomain}`;
             editUsername.value = currentUsername || '';
             editPassword.value = '';
+            
             const editNotesEl = document.getElementById('edit-notes');
             if (editNotesEl) editNotesEl.value = currentNotes || '';
+            
+            const editTagsEl = document.getElementById('edit-tags');
+            if (editTagsEl) editTagsEl.value = currentTags || '';
+            
+            const editTotpEl = document.getElementById('edit-totp');
+            if (editTotpEl) editTotpEl.value = currentTotp || '';
+            
             if (editMessage) editMessage.innerText = '';
             editModal.classList.remove('hidden');
         });
@@ -382,12 +426,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = editPassword.value;
             const editNotesEl = document.getElementById('edit-notes');
             const notes = editNotesEl ? editNotesEl.value : '';
+            const editTagsEl = document.getElementById('edit-tags');
+            const tags = editTagsEl ? editTagsEl.value : '';
+            const editTotpEl = document.getElementById('edit-totp');
+            const totp_secret = editTotpEl ? editTotpEl.value : '';
 
             try {
                 const res = await fetch('/api/update', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({domain: editingDomain, username, password, notes})
+                    body: JSON.stringify({domain: editingDomain, username, password, notes, tags, totp_secret})
                 });
                 const data = await res.json();
                 if (data.success) {

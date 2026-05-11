@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import os
 import pyperclip
+import pyotp
 
 from botpass.core.vault import Vault
 from botpass.core.utils import generate_password_diceware, generate_password_random, check_password_strength, check_hibp
@@ -65,12 +66,14 @@ def api_add():
     username = data.get('username')
     password = data.get('password')
     notes = data.get('notes', '')
+    tags = data.get('tags', '')
+    totp_secret = data.get('totp_secret', '')
     
     if not domain or not password:
         return jsonify({"error": "Missing domain or password"}), 400
         
     try:
-        _vault_instance.add(domain, username, password, notes)
+        _vault_instance.add(domain, username, password, notes, tags, totp_secret)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -86,7 +89,15 @@ def api_reveal():
     if data:
         # Copy to clipboard as a feature
         pyperclip.copy(data.get('password', ''))
-        return jsonify({"success": True, "password": data.get('password'), "copied": True})
+        
+        resp = {"success": True, "password": data.get('password'), "copied": True}
+        if data.get('totp_secret'):
+            try:
+                totp = pyotp.TOTP(data.get('totp_secret'))
+                resp['totp'] = totp.now()
+            except Exception:
+                resp['totp'] = "Invalid Secret"
+        return jsonify(resp)
     return jsonify({"error": "Not found"}), 404
 
 @app.route('/api/delete', methods=['POST'])
@@ -109,13 +120,17 @@ def api_update():
     new_username = data.get('username')
     new_password = data.get('password')
     new_notes = data.get('notes')
+    new_tags = data.get('tags')
+    new_totp_secret = data.get('totp_secret')
     
     try:
         _vault_instance.update_entry(
             domain, 
             new_username=new_username if new_username else None,
             new_password=new_password if new_password else None,
-            new_notes=new_notes if new_notes is not None else None
+            new_notes=new_notes if new_notes is not None else None,
+            new_tags=new_tags if new_tags is not None else None,
+            new_totp_secret=new_totp_secret if new_totp_secret is not None else None
         )
         return jsonify({"success": True})
     except Exception as e:

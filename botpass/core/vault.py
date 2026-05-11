@@ -142,7 +142,7 @@ class Vault:
         self._lock_timer.daemon = True
         self._lock_timer.start()
 
-    def add(self, domain: str, username: str, password: str, notes: str = ""):
+    def add(self, domain: str, username: str, password: str, notes: str = "", tags: str = "", totp_secret: str = ""):
         if not self.key:
             raise Exception("Vault is locked")
 
@@ -150,7 +150,14 @@ class Vault:
         domain_h = hmac_domain(domain, self.key)
         ad = b"botpass_entry"
         
-        payload = json.dumps({"domain": domain, "username": username, "password": password, "notes": notes})
+        payload = json.dumps({
+            "domain": domain, 
+            "username": username, 
+            "password": password, 
+            "notes": notes,
+            "tags": tags,
+            "totp_secret": totp_secret
+        })
         cipher_data, nonce = encrypt_entry(payload, self.key, ad)
         
         now = datetime.now().isoformat()
@@ -284,8 +291,8 @@ class Vault:
             self.conn.rollback()
             raise Exception(f"Failed to change password: {e}")
 
-    def update_entry(self, domain: str, new_username: str = None, new_password: str = None, new_notes: str = None):
-        """Update an existing entry's username, password, and/or notes."""
+    def update_entry(self, domain: str, new_username: str = None, new_password: str = None, new_notes: str = None, new_tags: str = None, new_totp_secret: str = None):
+        """Update an existing entry's username, password, notes, tags, and/or totp_secret."""
         if not self.key:
             raise Exception("Vault is locked")
 
@@ -301,6 +308,10 @@ class Vault:
             data["password"] = new_password
         if new_notes is not None:
             data["notes"] = new_notes
+        if new_tags is not None:
+            data["tags"] = new_tags
+        if new_totp_secret is not None:
+            data["totp_secret"] = new_totp_secret
 
         domain_h = hmac_domain(domain, self.key)
         ad = b"botpass_entry"
@@ -367,9 +378,11 @@ class Vault:
             username = entry.get("username", "")
             password = entry.get("password", "")
             notes = entry.get("notes", "")
+            tags = entry.get("tags", "")
+            totp_secret = entry.get("totp_secret", "")
             
             try:
-                self.add(domain, username, password, notes)
+                self.add(domain, username, password, notes, tags, totp_secret)
                 imported += 1
             except Exception:
                 # Domain probably already exists, skip
