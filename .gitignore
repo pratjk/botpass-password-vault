@@ -10,6 +10,7 @@ env/
 vault.db
 salt.bin
 config.json
+*.botpass
 
 # Logs
 *.log
