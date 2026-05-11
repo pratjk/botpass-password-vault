@@ -40,6 +40,14 @@ class Vault:
         """First time setup."""
         if os.path.exists(self.db_path) or os.path.exists(self.salt_path):
             raise Exception("Vault already exists!")
+            
+        # Password complexity validation
+        if len(master_pw) < 8:
+            raise Exception("Master password must be at least 8 characters long.")
+        if not any(char.isdigit() for char in master_pw):
+            raise Exception("Master password must contain at least one number.")
+        if not any(not char.isalnum() for char in master_pw):
+            raise Exception("Master password must contain at least one special character.")
 
         salt = os.urandom(32)
         with open(self.salt_path, 'wb') as f:
