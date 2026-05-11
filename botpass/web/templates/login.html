@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botpass - Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <h1>🔐 Botpass</h1>
+        <p class="subtitle">Your Local Vault</p>
+        
+        {% if error %}
+        <div class="alert error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+            {% if needs_setup %}
+            <p><strong>First time setup.</strong> Enter a strong master password.</p>
+            <div class="form-group">
+                <input type="password" name="master_pw" placeholder="Master Password" required autofocus>
+            </div>
+            <div class="form-group">
+                <input type="password" name="master_pw2" placeholder="Verify Password" required>
+            </div>
+            <button type="submit" class="btn">Initialize Vault</button>
+            <p class="warning">Do not forget this. There is NO recovery.</p>
+            {% else %}
+            <div class="form-group">
+                <input type="password" name="master_pw" placeholder="Master Password" required autofocus>
+            </div>
+            <button type="submit" class="btn">Unlock Vault</button>
+            {% endif %}
+        </form>
+    </div>
+</body>
+</html>

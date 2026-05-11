@@ -1,0 +1,97 @@
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+import os
+import pyperclip
+
+from botpass.core.vault import Vault
+
+app = Flask(__name__)
+# Generate a random secret key for Flask sessions each time
+# It's fine since it's local only and restarts mean new sessions anyway
+app.secret_key = os.urandom(24)
+
+# Hardcoded paths just like CLI
+VAULT_PATH = os.path.expanduser("vault.db")
+SALT_PATH = os.path.expanduser("salt.bin")
+CONFIG_PATH = os.path.expanduser("config.json")
+
+_vault_instance = Vault(VAULT_PATH, SALT_PATH, CONFIG_PATH)
+
+@app.route('/')
+def dashboard():
+    # If vault is locked or not initialized
+    if not _vault_instance.key:
+        return redirect(url_for('login'))
+        
+    try:
+        entries = _vault_instance.list_entries()
+    except Exception as e:
+        entries = []
+        
+    return render_template('index.html', entries=entries)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    needs_setup = not os.path.exists(VAULT_PATH)
+    error = None
+
+    if request.method == 'POST':
+        master_pw = request.form.get('master_pw')
+        if needs_setup:
+            pw2 = request.form.get('master_pw2')
+            if master_pw != pw2:
+                error = "Passwords do not match."
+            else:
+                try:
+                    _vault_instance.setup(master_pw)
+                    return redirect(url_for('dashboard'))
+                except Exception as e:
+                    error = str(e)
+        else:
+            if _vault_instance.unlock(master_pw):
+                return redirect(url_for('dashboard'))
+            else:
+                error = "Wrong password. Try again."
+
+    return render_template('login.html', needs_setup=needs_setup, error=error)
+
+@app.route('/api/add', methods=['POST'])
+def api_add():
+    if not _vault_instance.key:
+        return jsonify({"error": "Vault locked"}), 401
+        
+    data = request.json
+    domain = data.get('domain')
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not domain or not password:
+        return jsonify({"error": "Missing domain or password"}), 400
+        
+    try:
+        _vault_instance.add(domain, username, password)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/api/reveal', methods=['POST'])
+def api_reveal():
+    if not _vault_instance.key:
+        return jsonify({"error": "Vault locked"}), 401
+        
+    domain = request.json.get('domain')
+    data = _vault_instance.get(domain)
+    
+    if data:
+        # Copy to clipboard as a feature
+        pyperclip.copy(data.get('password', ''))
+        return jsonify({"success": True, "password": data.get('password'), "copied": True})
+    return jsonify({"error": "Not found"}), 404
+
+@app.route('/api/lock', methods=['POST'])
+def api_lock():
+    _vault_instance.lock()
+    return jsonify({"success": True})
+
+if __name__ == '__main__':
+    # Local only!
+    app.run(host='127.0.0.1', port=5000, debug=True)

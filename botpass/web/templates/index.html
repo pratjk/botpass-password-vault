@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botpass - Vault</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>🔐 Botpass</h1>
+            <div class="header-actions">
+                <button class="btn btn-outline" id="theme-toggle">🌙</button>
+                <button class="btn btn-danger" id="lock-btn">Lock Vault</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="add-section">
+            <h2>Add New Entry</h2>
+            <form id="add-form" class="add-form">
+                <input type="text" id="domain" placeholder="Domain (e.g., github.com)" required>
+                <input type="text" id="username" placeholder="Username">
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit" class="btn">Save</button>
+            </form>
+            <div id="add-message"></div>
+        </section>
+
+        <section class="vault-section">
+            <div class="vault-header">
+                <h2>Your Entries</h2>
+                <input type="text" id="search-input" placeholder="Search domains...">
+            </div>
+            
+            <div class="card-grid" id="entries-grid">
+                {% for entry in entries %}
+                <div class="card" data-domain="{{ entry.domain | lower }}">
+                    <h3>{{ entry.domain }}</h3>
+                    <p class="username">{{ entry.username }}</p>
+                    <div class="card-actions">
+                        <button class="btn btn-small reveal-btn" data-domain="{{ entry.domain }}">Reveal & Copy</button>
+                    </div>
+                </div>
+                {% else %}
+                <p class="empty-state">No entries yet. Start adding some above!</p>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">Copied to clipboard!</div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
