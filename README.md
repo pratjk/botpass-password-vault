@@ -21,29 +21,31 @@ The interface abandons generic, rounded design trends in favor of a brutalist, t
 ## ARCHITECTURE & CRYPTO STACK
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                    INTERFACES (3 clients)                   │
-│  ┌──────────┐  ┌──────────────┐  ┌─────────────────────┐  │
-│  │   CLI    │  │  Web (local) │  │   Desktop (PyQt/    │  │
-│  │ (Python) │  │  (Flask/JS)  │  │    Tauri wrapper)   │  │
-│  └────┬─────┘  └──────┬───────┘  └──────────┬──────────┘  │
-│       │               │                     │             │
-│       └───────────────┴─────────────────────┘             │
-│                         │                                 │
-│              ┌──────────▼──────────┐                      │
-│              │   Vault Core API    │                      │
-│              │   (Python module)   │                      │
-│              │  - Crypto engine    │                      │
-│              │  - DB abstraction   │                      │
-│              │  - Session mgmt     │                      │
-│              └──────────┬──────────┘                      │
-│                         │                                 │
-│              ┌──────────▼──────────┐                      │
-│              │   vault.db (SQLite) │                      │
-│              │   + salt.bin        │                      │
-│              │   + config.json     │                      │
-│              └─────────────────────┘                      │
-└─────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|                     INTERFACES (3 clients)                  |
+|                                                             |
+|   [ CLI ]          [ Web (local) ]      [ Desktop (PyQt/ ]  |
+|   (Python)           (Flask/JS)          Tauri wrapper)  ]  |
+|      |                    |                     |           |
++------|--------------------|---------------------|-----------+
+       |                    |                     |
+       +--------------------+---------------------+
+                            |
+                            v
+                 +----------------------+
+                 |    Vault Core API    |
+                 |   (Python module)    |
+                 |  - Crypto engine     |
+                 |  - DB abstraction    |
+                 |  - Session mgmt      |
+                 +----------+-----------+
+                            |
+                            v
+                 +----------------------+
+                 |   vault.db (SQLite)  |
+                 |   + salt.bin         |
+                 |   + config.json      |
+                 +----------------------+
 ```
 
 ### Threat Model & Mitigations
