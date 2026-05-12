@@ -42,28 +42,15 @@ def copy_with_timeout(text: str, timeout: int = 10):
     t.start()
 
 def banner():
-    art = """
-[bold cyan]
-  _           _                     
- | |         | |                    
- | |__   ___ | |_ _ __   __ _  ___ ___ 
- | '_ \\ / _ \\| __| '_ \\ / _` |/ __/ __|
- | |_) | (_) | |_| |_) | (_| | (__\\__ \\
- |_.__/ \\___/ \\__| .__/ \\__,_|\\___|___/
-                 | |                    
-                 |_|                    
-[/bold cyan]
-    [italic]Your Local Vault[/italic]
-    """
-    console.print(Panel.fit(art, border_style="cyan"))
+    console.print("\n[bold]Botpass[/bold] [dim]— Your Local Vault[/dim]\n")
 
 def cmd_setup():
     v = get_vault()
     console.print("[yellow]Looks like this is your first time here.[/yellow]")
     console.print("[bold red]WARNING: If you forget your master password, your data is GONE. No recovery.[/bold red]")
     
-    pw1 = getpass.getpass("Enter a strong master password: ")
-    pw2 = getpass.getpass("Verify password: ")
+    pw1 = getpass.getpass("❯ Enter a strong master password: ")
+    pw2 = getpass.getpass("❯ Verify password: ")
     
     if pw1 != pw2:
         console.print("[red]🙅 Nope. Passwords don't match. Try again.[/red]")
@@ -79,7 +66,7 @@ def cmd_setup():
 
 def cmd_unlock():
     v = get_vault()
-    pw = getpass.getpass("Master Password: ")
+    pw = getpass.getpass("❯ Master Password: ")
     
     if v.unlock(pw):
         console.print("[green]Vault unlocked![/green]")
@@ -96,11 +83,12 @@ def cmd_list():
             console.print("[yellow]Vault is empty. Add something![/yellow]")
             return
 
-        table = Table(title="Vault Entries", show_header=True, header_style="bold magenta")
-        table.add_column("Domain", style="cyan")
-        table.add_column("Username", style="green")
-        table.add_column("Tags", style="blue")
-        table.add_column("Notes/TOTP", style="dim")
+        from rich.box import MINIMAL
+        table = Table(show_header=True, header_style="bold", box=MINIMAL, border_style="dim")
+        table.add_column("Domain", style="white bold")
+        table.add_column("Username", style="white")
+        table.add_column("Tags", style="dim")
+        table.add_column("Notes/2FA", style="dim")
 
         # I find this easier to debug than a one-liner
         for e in entries:
@@ -117,14 +105,14 @@ def cmd_list():
 
 def cmd_add():
     v = get_vault()
-    domain = console.input("[cyan]Domain/Site: [/cyan]")
-    username = console.input("[cyan]Username: [/cyan]")
+    domain = console.input("[bold dim]❯[/bold dim] [white]Domain/Site:[/white] ")
+    username = console.input("[bold dim]❯[/bold dim] [white]Username:[/white] ")
     
-    use_gen = console.input("[cyan]Generate password? (y/n): [/cyan]").strip().lower()
+    use_gen = console.input("[bold dim]❯[/bold dim] [white]Generate password? (y/n):[/white] ").strip().lower()
     if use_gen == "y":
         password = cmd_generate(return_pw=True)
     else:
-        password = getpass.getpass("Password: ")
+        password = getpass.getpass("❯ Password: ")
     
     # Show strength
     strength = check_password_strength(password)
@@ -146,9 +134,9 @@ def cmd_add():
     else:
         console.print("[dim]Could not reach breach database. Skipping check.[/dim]")
     
-    notes = console.input("[cyan]Notes (optional): [/cyan]").strip()
-    tags = console.input("[cyan]Tags (comma separated, optional): [/cyan]").strip()
-    totp_secret = console.input("[cyan]TOTP Secret (optional): [/cyan]").strip()
+    notes = console.input("[bold dim]❯[/bold dim] [white]Notes (optional):[/white] ").strip()
+    tags = console.input("[bold dim]❯[/bold dim] [white]Tags (comma separated, optional):[/white] ").strip()
+    totp_secret = console.input("[bold dim]❯[/bold dim] [white]2FA Setup Key (optional):[/white] ").strip()
     
     try:
         v.add(domain, username, password, notes, tags, totp_secret)
@@ -183,7 +171,7 @@ def cmd_get():
 
 def cmd_delete():
     v = get_vault()
-    domain = console.input("[cyan]Domain to delete: [/cyan]")
+    domain = console.input("[bold dim]❯[/bold dim] [white]Domain to delete:[/white] ")
     
     try:
         if v.delete(domain):
@@ -195,7 +183,7 @@ def cmd_delete():
 
 def cmd_update():
     v = get_vault()
-    domain = console.input("[cyan]Domain to update: [/cyan]")
+    domain = console.input("[bold dim]❯[/bold dim] [white]Domain to update:[/white] ")
     
     data = v.get(domain)
     if not data:
@@ -208,10 +196,10 @@ def cmd_update():
     if data.get('tags'):
         console.print(f"Current tags: {data.get('tags')}")
     if data.get('totp_secret'):
-        console.print(f"Current TOTP Secret: {data.get('totp_secret')}")
+        console.print(f"Current 2FA Setup Key: {data.get('totp_secret')}")
         
-    new_un = console.input("[cyan]New username (leave blank to keep): [/cyan]").strip()
-    new_pw_input = console.input("[cyan]New password? (enter/generate/skip): [/cyan]").strip().lower()
+    new_un = console.input("[bold dim]❯[/bold dim] [white]New username (leave blank to keep):[/white] ").strip()
+    new_pw_input = console.input("[bold dim]❯[/bold dim] [white]New password? (enter/generate/skip):[/white] ").strip().lower()
     
     new_pw = None
     if new_pw_input == "generate":
@@ -219,9 +207,9 @@ def cmd_update():
     elif new_pw_input == "enter":
         new_pw = getpass.getpass("New password: ")
     
-    new_notes = console.input("[cyan]New notes (leave blank to keep): [/cyan]").strip()
-    new_tags = console.input("[cyan]New tags (leave blank to keep): [/cyan]").strip()
-    new_totp = console.input("[cyan]New TOTP Secret (leave blank to keep): [/cyan]").strip()
+    new_notes = console.input("[bold dim]❯[/bold dim] [white]New notes (leave blank to keep):[/white] ").strip()
+    new_tags = console.input("[bold dim]❯[/bold dim] [white]New tags (leave blank to keep):[/white] ").strip()
+    new_totp = console.input("[bold dim]❯[/bold dim] [white]New 2FA Setup Key (leave blank to keep):[/white] ").strip()
     
     try:
         v.update_entry(
@@ -239,8 +227,8 @@ def cmd_update():
 def cmd_changepw():
     v = get_vault()
     console.print("[yellow]Changing master password will re-encrypt your entire vault.[/yellow]")
-    pw1 = getpass.getpass("Enter NEW strong master password: ")
-    pw2 = getpass.getpass("Verify NEW password: ")
+    pw1 = getpass.getpass("❯ Enter NEW strong master password: ")
+    pw2 = getpass.getpass("❯ Verify NEW password: ")
     
     if pw1 != pw2:
         console.print("[red]🙅 Passwords don't match.[/red]")
@@ -254,7 +242,7 @@ def cmd_changepw():
 
 def cmd_generate(return_pw=False):
     """Generate a password. If return_pw=True, returns the password instead of copying."""
-    style = console.input("[cyan]Style? (diceware/random): [/cyan]").strip().lower()
+    style = console.input("[bold dim]❯[/bold dim] [white]Style? (diceware/random):[/white] ").strip().lower()
     
     if style == "diceware" or style == "d":
         pw = generate_password_diceware()
@@ -273,7 +261,7 @@ def cmd_generate(return_pw=False):
 
 def cmd_export():
     v = get_vault()
-    filepath = console.input("[cyan]Export path (e.g., backup.botpass): [/cyan]").strip()
+    filepath = console.input("[bold dim]❯[/bold dim] [white]Export path (e.g., backup.botpass):[/white] ").strip()
     if not filepath:
         filepath = "vault_backup.botpass"
     
@@ -285,7 +273,7 @@ def cmd_export():
 
 def cmd_breach():
     """Check a password against Have I Been Pwned."""
-    pw = getpass.getpass("Password to check: ")
+    pw = getpass.getpass("❯ Password to check: ")
     console.print("[dim]Checking against known breaches (using k-anonymity)...[/dim]")
     count = check_hibp(pw)
     if count > 0:
@@ -301,7 +289,7 @@ def _strength_color(score):
 
 def cmd_import():
     v = get_vault()
-    filepath = console.input("[cyan]Backup file path (e.g., vault_backup.botpass): [/cyan]").strip()
+    filepath = console.input("[bold dim]❯[/bold dim] [white]Backup file path (e.g., vault_backup.botpass):[/white] ").strip()
     if not filepath:
         console.print("[red]No path given.[/red]")
         return
@@ -334,8 +322,8 @@ def main():
     # Interactive loop
     while True:
         try:
-            console.print("\n[bold]Commands:[/bold] [cyan]list[/cyan] [cyan]add[/cyan] [cyan]get[/cyan] [cyan]update[/cyan] [cyan]del[/cyan] [cyan]generate[/cyan] [cyan]breach[/cyan] [cyan]export[/cyan] [cyan]import[/cyan] [cyan]changepw[/cyan] [cyan]lock[/cyan] [cyan]quit[/cyan]")
-            cmd = console.input("> ").strip().lower()
+            console.print("\n[bold dim]Commands:[/bold dim] [white]list, add, get, update, del, generate, breach, export, import, changepw, lock, quit[/white]")
+            cmd = console.input("[bold dim]❯[/bold dim] ").strip().lower()
             
             if cmd == "quit" or cmd == "q" or cmd == "exit":
                 v.lock()
