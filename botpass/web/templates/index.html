@@ -3,64 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Botpass - Vault</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+    <title>BOTPASS // VAULT</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' fill='%2300ff00'>V</text></svg>">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <header>
         <div class="header-content">
-            <h1>🔐 Botpass</h1>
+            <h1>OVERWATCH // VAULT</h1>
             <div class="header-actions">
-                <button class="btn btn-outline" id="export-btn">📦 Export</button>
-                <button class="btn btn-outline" id="import-btn">📥 Import</button>
-                <button class="btn btn-outline" id="show-change-pw-btn">🔑 Change PW</button>
-                <button class="btn btn-danger" id="lock-btn">Lock Vault</button>
+                <button class="btn btn-outline" id="export-btn">[ EXPORT ]</button>
+                <button class="btn btn-outline" id="import-btn">[ IMPORT ]</button>
+                <button class="btn btn-outline" id="show-change-pw-btn">[ CHG_PW ]</button>
+                <button class="btn btn-danger" id="lock-btn">[ LOCK_VAULT ]</button>
             </div>
         </div>
     </header>
 
     <main class="container">
         <!-- Change Password Section (hidden by default) -->
-        <section class="add-section" id="change-pw-section" style="display: none; border: 2px solid var(--danger);">
-            <h2>Change Master Password</h2>
+        <section class="add-section hud-brackets" id="change-pw-section" style="display: none; border-color: var(--danger);">
+            <h2>CHANGE MASTER PASSWORD</h2>
             <form id="change-pw-form" class="add-form" style="grid-template-columns: 1fr 1fr auto auto;">
                 <input type="password" id="new-pw" placeholder="New Password" required>
                 <input type="password" id="new-pw2" placeholder="Verify Password" required>
-                <button type="submit" class="btn btn-danger">Re-encrypt</button>
-                <button type="button" class="btn btn-outline" id="cancel-change-pw">Cancel</button>
+                <button type="submit" class="btn btn-danger">[ RE_ENCRYPT ]</button>
+                <button type="button" class="btn btn-outline" id="cancel-change-pw">[ CANCEL ]</button>
             </form>
         </section>
 
         <!-- Import Section (hidden by default) -->
-        <section class="add-section" id="import-section" style="display: none; border: 2px solid var(--primary);">
-            <h2>Import from Backup</h2>
+        <section class="add-section hud-brackets" id="import-section" style="display: none;">
+            <h2>RESTORE FROM BACKUP</h2>
             <form id="import-form" class="add-form" style="grid-template-columns: 1fr auto auto;">
-                <input type="text" id="import-path" placeholder="Backup file path (e.g., vault_backup.botpass)" required>
-                <button type="submit" class="btn">Import</button>
-                <button type="button" class="btn btn-outline" id="cancel-import">Cancel</button>
+                <input type="text" id="import-path" placeholder="/path/to/vault_backup.botpass" required>
+                <button type="submit" class="btn btn-primary">[ EXECUTE ]</button>
+                <button type="button" class="btn btn-outline" id="cancel-import">[ CANCEL ]</button>
             </form>
             <div id="import-message" class="add-message"></div>
         </section>
 
         <!-- Add Entry Section -->
-        <section class="add-section">
-            <h2>Add New Entry</h2>
+        <section class="add-section hud-brackets">
+            <h2>INITIALIZE NEW ENTRY</h2>
             <form id="add-form">
                 <div class="add-form" style="grid-template-columns: 1fr 1fr 1fr auto auto;">
-                    <input type="text" id="domain" placeholder="Domain (e.g., github.com)" required>
-                    <input type="text" id="username" placeholder="Username">
+                    <input type="text" id="domain" placeholder="TARGET_DOMAIN" required>
+                    <input type="text" id="username" placeholder="IDENTIFIER">
                     <div class="password-field">
-                        <input type="password" id="password" placeholder="Password" required>
+                        <input type="password" id="password" placeholder="CREDENTIAL" required>
                         <div class="strength-bar" id="strength-bar"></div>
                     </div>
-                    <button type="button" class="btn btn-outline btn-small" id="generate-btn">🎲 Generate</button>
-                    <button type="submit" class="btn btn-small">Save</button>
+                    <button type="button" class="btn btn-outline btn-small" id="generate-btn">[ GEN ]</button>
+                    <button type="submit" class="btn btn-primary btn-small">[ SAVE ]</button>
                 </div>
-                <div class="notes-row" style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.75rem;">
-                    <input type="text" id="notes" placeholder="Notes (optional — recovery codes, etc.)">
-                    <input type="text" id="tags" placeholder="Tags (comma separated)">
-                    <input type="text" id="totp_secret" placeholder="2FA Setup Key (from website)">
+                <div class="notes-row" style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px;">
+                    <input type="text" id="notes" placeholder="NOTES // RECOVERY_CODES">
+                    <input type="text" id="tags" placeholder="TAGS (COMMA_SEP)">
+                    <input type="text" id="totp_secret" placeholder="2FA_SETUP_KEY">
                 </div>
             </form>
             <div id="add-message" class="add-message"></div>
@@ -69,14 +69,14 @@
         <!-- Entries Section -->
         <section class="vault-section">
             <div class="vault-header">
-                <h2>Your Entries ({{ entries | length }})</h2>
-                <input type="text" id="search-input" placeholder="Search domains...">
+                <h2>DATABASE // ENTRIES ({{ entries | length }})</h2>
+                <input type="text" id="search-input" placeholder="QUERY DOMAIN OR TAG...">
             </div>
             
             <div class="card-grid" id="entries-grid">
                 {% for entry in entries %}
                 <div class="card" data-domain="{{ entry.domain | lower }}" data-tags="{{ entry.tags | lower if entry.tags else '' }}">
-                    <h3>{{ entry.domain }} {% if entry.totp_secret %}<span class="totp-badge" title="2FA Enabled">🔐</span>{% endif %}</h3>
+                    <h3>{{ entry.domain }} {% if entry.totp_secret %}<span class="totp-badge" title="2FA Enabled">[ 2FA ]</span>{% endif %}</h3>
                     <p class="username">{{ entry.username }}</p>
                     {% if entry.tags %}
                     <div class="tags-container">
@@ -86,16 +86,16 @@
                     </div>
                     {% endif %}
                     {% if entry.notes %}
-                    <p class="notes">📝 {{ entry.notes }}</p>
+                    <p class="notes">{{ entry.notes }}</p>
                     {% endif %}
                     <div class="card-actions">
-                        <button class="btn btn-small reveal-btn" data-domain="{{ entry.domain }}">👁 Reveal</button>
-                        <button class="btn btn-small btn-outline edit-btn" data-domain="{{ entry.domain }}" data-username="{{ entry.username }}" data-notes="{{ entry.notes or '' }}" data-tags="{{ entry.tags or '' }}" data-totp="{{ entry.totp_secret or '' }}">✏️ Edit</button>
-                        <button class="btn btn-small btn-danger delete-btn" data-domain="{{ entry.domain }}">🗑 Delete</button>
+                        <button class="btn btn-small reveal-btn btn-primary" data-domain="{{ entry.domain }}">[ REVEAL ]</button>
+                        <button class="btn btn-small btn-outline edit-btn" data-domain="{{ entry.domain }}" data-username="{{ entry.username }}" data-notes="{{ entry.notes or '' }}" data-tags="{{ entry.tags or '' }}" data-totp="{{ entry.totp_secret or '' }}">[ EDIT ]</button>
+                        <button class="btn btn-small btn-danger delete-btn" data-domain="{{ entry.domain }}">[ X ]</button>
                     </div>
                 </div>
                 {% else %}
-                <p class="empty-state">No entries yet. Start adding some above!</p>
+                <p class="empty-state">DATABASE EMPTY.</p>
                 {% endfor %}
             </div>
         </section>
@@ -103,53 +103,53 @@
 
     <!-- Edit Modal -->
     <div id="edit-modal" class="modal hidden">
-        <div class="modal-content">
-            <h2>Edit Entry</h2>
+        <div class="modal-content hud-brackets">
+            <h2>EDIT // ENTRY</h2>
             <p id="edit-domain-label"></p>
             <div class="form-group">
-                <input type="text" id="edit-username" placeholder="New Username">
+                <input type="text" id="edit-username" placeholder="NEW IDENTIFIER">
             </div>
             <div class="form-group">
                 <div class="password-field">
-                    <input type="password" id="edit-password" placeholder="New Password (leave blank to keep)">
+                    <input type="password" id="edit-password" placeholder="NEW CREDENTIAL (BLANK TO KEEP)">
                 </div>
             </div>
             <div class="form-group">
-                <input type="text" id="edit-notes" placeholder="Notes (leave blank to keep)">
+                <input type="text" id="edit-notes" placeholder="NOTES (BLANK TO KEEP)">
             </div>
-            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-                <input type="text" id="edit-tags" placeholder="Tags (comma separated)">
-                <input type="text" id="edit-totp" placeholder="2FA Setup Key">
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <input type="text" id="edit-tags" placeholder="TAGS">
+                <input type="text" id="edit-totp" placeholder="2FA_SETUP_KEY">
             </div>
-            <div class="form-group" style="display: flex; gap: 0.5rem;">
-                <button type="button" class="btn btn-outline btn-small" id="edit-generate-btn">🎲 Generate</button>
-                <button type="button" class="btn btn-outline btn-small" id="edit-breach-btn">🔍 Breach Check</button>
+            <div class="form-group" style="display: flex; gap: 16px;">
+                <button type="button" class="btn btn-outline btn-small" id="edit-generate-btn">[ GEN ]</button>
+                <button type="button" class="btn btn-outline btn-small" id="edit-breach-btn">[ SCAN_BREACH ]</button>
             </div>
             <div id="edit-message" class="add-message"></div>
             <div class="modal-actions">
-                <button class="btn" id="edit-save-btn">Save Changes</button>
-                <button class="btn btn-outline" id="edit-cancel-btn">Cancel</button>
+                <button class="btn btn-primary" id="edit-save-btn">[ SAVE ]</button>
+                <button class="btn btn-outline" id="edit-cancel-btn">[ CANCEL ]</button>
             </div>
         </div>
     </div>
 
     <!-- TOTP Modal -->
     <div id="totp-modal" class="modal hidden">
-        <div class="modal-content" style="text-align: center;">
-            <h2>2FA Code</h2>
-            <p>For <strong id="totp-domain-label"></strong></p>
-            <div class="totp-display" id="totp-code" style="font-size: 3rem; letter-spacing: 5px; font-weight: bold; margin: 1rem 0; color: var(--primary); cursor: pointer;" title="Click to copy">
+        <div class="modal-content hud-brackets" style="text-align: center;">
+            <h2>2FA_CODE // LIVE</h2>
+            <p>TARGET: <strong id="totp-domain-label"></strong></p>
+            <div class="totp-display" id="totp-code" style="font-size: 48px; letter-spacing: 8px; font-weight: 700; margin: 32px 0; cursor: pointer;" title="Click to copy">
                 000000
             </div>
-            <p class="notes">Click the code to copy</p>
+            <p class="notes">CLICK CODE TO COPY</p>
             <div class="modal-actions">
-                <button class="btn btn-outline" id="totp-close-btn">Close</button>
+                <button class="btn btn-outline" id="totp-close-btn">[ CLOSE ]</button>
             </div>
         </div>
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="toast hidden">Copied to clipboard!</div>
+    <div id="toast" class="toast hidden">SYSTEM: COPIED TO CLIPBOARD</div>
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

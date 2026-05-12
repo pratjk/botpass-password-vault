@@ -53,7 +53,7 @@ def cmd_setup():
     pw2 = getpass.getpass("❯ Verify password: ")
     
     if pw1 != pw2:
-        console.print("[red]🙅 Nope. Passwords don't match. Try again.[/red]")
+        console.print("[red][ ERROR ] Passwords don't match. Try again.[/red]")
         return False
         
     try:
@@ -72,7 +72,7 @@ def cmd_unlock():
         console.print("[green]Vault unlocked![/green]")
         return True
     else:
-        console.print("[red]🙅 Nope. Wrong password. Try again.[/red]")
+        console.print("[red][ ERROR ] Wrong password. Try again.[/red]")
         return False
 
 def cmd_list():
@@ -124,13 +124,13 @@ def cmd_add():
     console.print("[dim]Checking against known breaches...[/dim]")
     breach_count = check_hibp(password)
     if breach_count > 0:
-        console.print(f"[bold red]⚠ This password appeared in {breach_count:,} data breaches! Consider a different one.[/bold red]")
+        console.print(f"[bold red][ WARNING ] This password appeared in {breach_count:,} data breaches! Consider a different one.[/bold red]")
         proceed = console.input("[yellow]Save anyway? (y/n): [/yellow]").strip().lower()
         if proceed != "y":
             console.print("Cancelled.")
             return
     elif breach_count == 0:
-        console.print("[green]✓ Not found in any known breaches.[/green]")
+        console.print("[green][ OK ] Not found in any known breaches.[/green]")
     else:
         console.print("[dim]Could not reach breach database. Skipping check.[/dim]")
     
@@ -231,7 +231,7 @@ def cmd_changepw():
     pw2 = getpass.getpass("❯ Verify NEW password: ")
     
     if pw1 != pw2:
-        console.print("[red]🙅 Passwords don't match.[/red]")
+        console.print("[red][ ERROR ] Passwords don't match.[/red]")
         return
         
     try:
@@ -277,9 +277,9 @@ def cmd_breach():
     console.print("[dim]Checking against known breaches (using k-anonymity)...[/dim]")
     count = check_hibp(pw)
     if count > 0:
-        console.print(f"[bold red]⚠ Found in {count:,} breaches! Change this password immediately.[/bold red]")
+        console.print(f"[bold red][ WARNING ] Found in {count:,} breaches! Change this password immediately.[/bold red]")
     elif count == 0:
-        console.print("[green]✓ Not found in any known breaches. You're good.[/green]")
+        console.print("[green][ OK ] Not found in any known breaches. You're good.[/green]")
     else:
         console.print("[yellow]Could not reach the breach database. Try again later.[/yellow]")
 

@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const data = await res.json();
                     strengthBar.className = 'strength-bar strength-' + data.score;
                     if (addMessage) {
-                        addMessage.innerText = data.label + ' — ' + data.feedback.join(', ');
+                        addMessage.innerText = data.label + ' // ' + data.feedback.join(', ');
                         addMessage.style.color = ['#e74c3c','#e74c3c','#f39c12','#27ae60','#27ae60'][data.score];
                     }
                 } catch(err) {}
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 passwordInput.value = data.password;
                 passwordInput.dispatchEvent(new Event('input')); // Trigger strength bar
                 setTimeout(() => { passwordInput.type = 'password'; }, 3000);
-                showToast("Password generated! Visible for 3s.");
+                showToast("SYSTEM: PASSWORD GENERATED. VISIBLE FOR 3S.");
             } catch(err) {
                 alert("Failed to generate password");
             }
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const breachData = await breachRes.json();
                 if (breachData.count > 0) {
-                    const proceed = confirm(`⚠ This password has appeared in ${breachData.count.toLocaleString()} data breaches!\n\nSave anyway?`);
+                    const proceed = confirm(`SYSTEM ALERT: This password has appeared in ${breachData.count.toLocaleString()} data breaches!\n\nProceed anyway?`);
                     if (!proceed) {
                         if (addMessage) addMessage.innerText = 'Cancelled.';
                         return;
@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (data.success) {
                     showToast("Password copied to clipboard!");
-                    e.target.innerText = "✓ Copied!";
+                    e.target.innerText = "[ COPIED ]";
                     
                     // Show TOTP modal if a code was returned
                     if (data.totp) {
@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (totpCodeDisplay) {
         totpCodeDisplay.addEventListener('click', () => {
             navigator.clipboard.writeText(totpCodeDisplay.innerText).then(() => {
-                showToast("2FA Code copied!");
+                showToast("SYSTEM: 2FA CODE COPIED");
             });
         });
     }
@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 editPassword.value = data.password;
                 setTimeout(() => { editPassword.type = 'password'; }, 3000);
                 if (editMessage) {
-                    editMessage.innerText = `Generated (${data.strength.label}). Visible for 3s.`;
+                    editMessage.innerText = `[ SYSTEM: GENERATED (${data.strength.label}) ] VISIBLE 3S.`;
                     editMessage.style.color = 'var(--success)';
                 }
             } catch(err) {
@@ -386,10 +386,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const data = await res.json();
                 if (data.count > 0) {
-                    editMessage.innerText = `⚠ Found in ${data.count.toLocaleString()} breaches!`;
+                    editMessage.innerText = `[ ALERT ] FOUND IN ${data.count.toLocaleString()} BREACHES.`;
                     editMessage.style.color = 'var(--danger)';
                 } else if (data.count === 0) {
-                    editMessage.innerText = '✓ Not found in any breaches.';
+                    editMessage.innerText = '[ OK ] NOT FOUND IN BREACHES.';
                     editMessage.style.color = 'var(--success)';
                 } else {
                     editMessage.innerText = 'Could not reach breach database.';
