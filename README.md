@@ -4,6 +4,12 @@ A highly secure, local-first password vault and 2FA authenticator designed for p
 
 Botpass was built to completely replace cloud-based password managers and secondary authenticator apps. It stores everything locally, uses state-of-the-art encryption, and features a high-tech "Overwatch" dashboard aesthetic.
 
+**<img width="1297" height="987" alt="Screenshot 2026-05-12 054749" src="https://github.com/user-attachments/assets/4ac05c12-8eae-4411-8c65-287b7bb7c49f" />**
+
+**<img width="1920" height="1080" alt="Screenshot 2026-05-12 054823" src="https://github.com/user-attachments/assets/01fb504b-c727-4c2a-8492-3eaf0e059346" />**
+
+**<img width="1920" height="1020" alt="Screenshot 2026-05-12 054906" src="https://github.com/user-attachments/assets/c6014157-7e15-40df-b7ee-d24bfb42849d" />**
+
 ## KEY FEATURES
 
 - **Local-First**: Your data never leaves your machine. No cloud, no subscriptions, no data breaches.
